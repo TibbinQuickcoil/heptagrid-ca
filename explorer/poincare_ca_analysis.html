@@ -1,0 +1,591 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#050510;font-family:'Courier New',monospace;color:#406080;padding:10px 8px;}
+#title{font-size:10px;letter-spacing:3px;color:#1a2a3a;text-transform:uppercase;margin-bottom:8px;text-align:center;}
+#main{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;}
+canvas#c{display:block;cursor:crosshair;flex-shrink:0;}
+#side{flex:1;min-width:210px;display:flex;flex-direction:column;gap:8px;}
+.box{background:#0a1520;border:1px solid #0d1e2e;padding:10px;}
+.box-title{font-size:9px;letter-spacing:2px;color:#152a3a;text-transform:uppercase;margin-bottom:8px;}
+.mrow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;}
+.ml{font-size:9px;color:#1a3050;letter-spacing:1px;}
+.mv{font-size:16px;color:#3a7090;}
+.mv.hi{color:#40c880;}
+.bwrap{margin:5px 0 2px;}
+.blabel{font-size:9px;color:#152535;margin-bottom:2px;}
+.btrack{height:5px;background:#080f18;border:1px solid #0d1828;}
+.bfill{height:100%;transition:width 0.4s;}
+.ba{background:#28a870;}
+.bb{background:#1a3555;}
+#verdict{font-size:10px;letter-spacing:1px;color:#1a3050;margin-top:6px;}
+#verdict.geo{color:#40d080;}
+canvas#chart{display:block;background:#060c18;border:1px solid #0a1828;}
+#ctrl{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;align-items:center;}
+button{background:#0a1520;color:#3a6888;border:1px solid #152535;padding:4px 10px;cursor:pointer;font-family:monospace;font-size:10px;letter-spacing:1px;transition:background 0.15s;}
+button:hover{background:#14253a;color:#60a8d0;}
+button.on{background:#0d2238;color:#70c0e8;border-color:#2a5070;}
+button.go{background:#0d2030;color:#30b870;border-color:#1a4828;}
+button.go:hover{background:#142a20;color:#50d890;}
+button:disabled{opacity:0.4;cursor:not-allowed;}
+select{background:#0a1520;color:#3a6888;border:1px solid #152535;padding:4px 6px;font-family:monospace;font-size:10px;}
+label{font-size:10px;color:#253545;display:flex;align-items:center;gap:4px;}
+input[type=range]{width:65px;accent-color:#305070;}
+#info{margin-top:5px;font-size:10px;color:#1a2a3a;letter-spacing:2px;}
+#status{font-size:9px;color:#1a4030;letter-spacing:1px;margin-top:2px;min-height:14px;}
+.note{font-size:9px;color:#0f2030;letter-spacing:1px;margin-top:4px;}
+#survey-section{margin-top:12px;display:none;}
+#survey-section.show{display:block;}
+.stitle{font-size:9px;letter-spacing:2px;color:#1a3050;text-transform:uppercase;margin-bottom:6px;}
+table{width:100%;border-collapse:collapse;font-size:10px;}
+th{color:#152535;letter-spacing:1px;text-align:left;padding:3px 8px;border-bottom:1px solid #0a1828;font-weight:normal;}
+td{color:#284050;padding:3px 8px;border-bottom:1px solid #070e18;}
+tr.geo td{color:#30a060;}
+tr.geo .beh{color:#50e090;font-weight:bold;}
+td.num{color:#3a6080;font-variant-numeric:tabular-nums;}
+tr.geo td.num{color:#30b870;}
+.export-row{display:flex;gap:6px;margin-top:8px;}
+</style>
+
+<div id="title">{7,3} poincaré disk — cellular automata + geodesic analysis</div>
+<div id="main">
+  <canvas id="c" width="520" height="520"></canvas>
+  <div id="side">
+    <div class="box">
+      <div class="box-title">live metrics</div>
+      <div class="mrow"><span class="ml">generation</span><span class="mv" id="mv-gen">0</span></div>
+      <div class="mrow"><span class="ml">alive cells</span><span class="mv" id="mv-alive">0</span></div>
+      <div class="mrow"><span class="ml">alignment score</span><span class="mv" id="mv-align">—</span></div>
+      <div class="bwrap">
+        <div class="blabel">observed alignment (lower = more geodesic)</div>
+        <div class="btrack"><div class="bfill ba" id="bar-obs" style="width:0%"></div></div>
+      </div>
+      <div class="bwrap">
+        <div class="blabel">random baseline · 12.9°</div>
+        <div class="btrack"><div class="bfill bb" style="width:100%"></div></div>
+      </div>
+      <div id="verdict">—</div>
+    </div>
+    <div class="box">
+      <div class="box-title">alignment history</div>
+      <canvas id="chart" width="210" height="72"></canvas>
+      <div class="note">cyan line = alignment · dashed = 12.9° random baseline · lower = stronger bias</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="go" id="bSurvey">▶ run full survey</button>
+    </div>
+    <div id="status"></div>
+  </div>
+</div>
+
+<div id="ctrl">
+  <button id="bPlay">▶ play</button>
+  <button id="bStep">step</button>
+  <button id="bRand">random</button>
+  <button id="bSeed">seed</button>
+  <button id="bClr">clear</button>
+  <select id="ruleEl">
+    <option value="3_34" selected>B3/S34</option>
+    <option value="2_34">B2/S34</option>
+    <option value="23_34">B23/S34</option>
+    <option value="3_23">B3/S23</option>
+    <option value="2_23">B2/S23</option>
+    <option value="34_234">B34/S234</option>
+    <option value="2_345">B2/S345</option>
+    <option value="1_12">B1/S12</option>
+  </select>
+  <label>speed <input type="range" id="spd" min="1" max="20" value="5"></label>
+</div>
+<div id="info">— cells | gen 0 | alive 0</div>
+<div class="note">click cells to toggle · 7 neighbors · exponential spatial growth</div>
+
+<div id="survey-section">
+  <div class="stitle">rule survey — geodesic alignment by rule family</div>
+  <table>
+    <thead>
+      <tr>
+        <th>rule</th>
+        <th>alive@60</th>
+        <th>avg align°</th>
+        <th>min align°</th>
+        <th>vs baseline</th>
+        <th>behavior</th>
+      </tr>
+    </thead>
+    <tbody id="survey-body"></tbody>
+  </table>
+  <div class="note" style="margin-top:6px;">seed: cells [0,1,2,8] · 60 generations · random baseline: 12.9° · geodesic threshold: &lt;7.1°</div>
+  <div class="export-row">
+    <button id="bExportCSV">export csv</button>
+    <button id="bExportJSON">export json</button>
+  </div>
+</div>
+
+<script>
+const can=document.getElementById('c');
+const ctx=can.getContext('2d');
+const chartCan=document.getElementById('chart');
+const chartCtx=chartCan.getContext('2d');
+const W=520,H=520,CX=W/2,CY=H/2,DR=248;
+const P=7,PI=Math.PI,TAU=2*PI;
+
+// {7,3} hyperbolic constants
+const APO=Math.acosh(Math.cos(PI/3)/Math.sin(PI/7));
+const HE=Math.acosh(Math.cos(PI/7)/Math.sin(PI/3));
+const RC=Math.acosh(Math.cosh(APO)*Math.cosh(HE));
+const RHO_CC=Math.tanh(APO);
+const RHO_V=Math.tanh(RC/2);
+
+function pm(zr,zi,th,rho){
+  const pr=rho*Math.cos(th),pi_=rho*Math.sin(th);
+  const nr=pr+zr,ni=pi_+zi;
+  const dr=1+zr*pr+zi*pi_,di=zr*pi_-zi*pr;
+  const d2=dr*dr+di*di;
+  return[(nr*dr+ni*di)/d2,(ni*dr-nr*di)/d2];
+}
+function hd(x1,y1,x2,y2){
+  const nr=x2-x1,ni=y2-y1;
+  const dr=1-x1*x2-y1*y2,di=-(x1*y2-y1*x2);
+  const d2=dr*dr+di*di;
+  return Math.atan2((ni*dr-nr*di)/d2,(nr*dr+ni*di)/d2);
+}
+
+// BFS cell generation
+const cells=[],nbrs=[],verts=[];
+(function(){
+  const posMap=new Map();
+  const key=(r,i)=>`${Math.round(r*7000)},${Math.round(i*7000)}`;
+  function addCell(cr,ci,orient,depth){
+    const id=cells.length;
+    const vx=new Float32Array(P*2);
+    for(let j=0;j<P;j++){
+      const th=orient+PI*(2*j+1)/P;
+      const[r,i_]=pm(cr,ci,th,RHO_V);
+      vx[j*2]=CX+r*DR;vx[j*2+1]=CY-i_*DR;
+    }
+    cells.push({id,cr,ci,orient,depth,state:0,next:0,age:0});
+    nbrs.push(new Int32Array(P).fill(-1));
+    verts.push(vx);
+    posMap.set(key(cr,ci),id);
+    return id;
+  }
+  addCell(0,0,0,0);
+  const q=[0];let qi=0;
+  while(qi<q.length){
+    const id=q[qi++];
+    const c=cells[id];
+    if(c.depth>=4)continue;
+    for(let j=0;j<P;j++){
+      if(nbrs[id][j]!==-1)continue;
+      const th=c.orient+TAU*j/P;
+      const[cr,ci]=pm(c.cr,c.ci,th,RHO_CC);
+      if(cr*cr+ci*ci>0.971*0.971)continue;
+      const ky=key(cr,ci);
+      if(posMap.has(ky)){
+        const cid=posMap.get(ky);
+        nbrs[id][j]=cid;
+        const ch=cells[cid];
+        const bd=hd(ch.cr,ch.ci,c.cr,c.ci);
+        let bj=0,bd2=9;
+        for(let jj=0;jj<P;jj++){
+          let d=bd-(ch.orient+TAU*jj/P);
+          d-=TAU*Math.round(d/TAU);
+          if(Math.abs(d)<bd2){bd2=Math.abs(d);bj=jj;}
+        }
+        if(nbrs[cid][bj]===-1)nbrs[cid][bj]=id;
+      }else{
+        const bd=hd(cr,ci,c.cr,c.ci);
+        const cid=addCell(cr,ci,bd,c.depth+1);
+        nbrs[cid][0]=id;nbrs[id][j]=cid;
+        q.push(cid);
+      }
+    }
+  }
+})();
+
+const N=cells.length;
+const ro=[...cells].sort((a,b)=>b.depth-a.depth).map(c=>c.id);
+
+// CA
+let gen=0;
+let birth=new Set([3]),surv=new Set([3,4]);
+
+function parseRule(s){
+  const[b,sv]=s.split('_');
+  birth=new Set(b.split('').map(Number));
+  surv=new Set(sv.split('').map(Number));
+}
+
+function stepCA(){
+  for(let id=0;id<N;id++){
+    let a=0;
+    const nb=nbrs[id];
+    for(let j=0;j<P;j++)if(nb[j]>=0&&cells[nb[j]].state)a++;
+    const c=cells[id];
+    c.next=c.state?surv.has(a)?1:0:birth.has(a)?1:0;
+  }
+  for(let id=0;id<N;id++){
+    const c=cells[id];
+    c.age=c.next?(c.state?c.age+1:0):0;
+    c.state=c.next;
+  }
+  gen++;
+}
+
+function cellClr(c){
+  if(!c.state)return null;
+  const t=Math.min(1,c.age/20);
+  const df=Math.max(0.28,1-c.depth*0.13);
+  const h=190+t*30,s=Math.round(85-t*25),l=Math.round((72-28*t)*df);
+  return`hsl(${h},${s}%,${l}%)`;
+}
+
+// ── Analysis ────────────────────────────────────────────────────
+const SECTOR=TAU/P;                          // 2π/7
+const BASELINE_DEG=(SECTOR/4)*180/PI;        // ≈12.86°
+const GEO_THRESHOLD=BASELINE_DEG*0.55;       // ≈7.07° — strong bias
+
+function computeAlign(){
+  const far=cells.filter(c=>c.state&&(c.cr*c.cr+c.ci*c.ci)>0.002);
+  if(!far.length)return null;
+  let total=0;
+  for(const c of far){
+    const theta=Math.atan2(c.ci,c.cr);
+    const t=((theta%SECTOR)+SECTOR)%SECTOR;
+    total+=Math.min(t,SECTOR-t);
+  }
+  return(total/far.length)*180/PI;
+}
+
+function countAlive(){return cells.reduce((a,c)=>a+(c.state?1:0),0);}
+
+// History
+const HIST=150;
+const hAlign=[],hAlive=[];
+
+let inSurvey=false;
+
+function updateMetrics(){
+  const align=computeAlign();
+  const alive=countAlive();
+
+  if(!inSurvey){
+    hAlign.push(align);
+    hAlive.push(alive);
+    if(hAlign.length>HIST){hAlign.shift();hAlive.shift();}
+  }
+
+  document.getElementById('mv-gen').textContent=gen;
+  document.getElementById('mv-alive').textContent=alive;
+
+  const elA=document.getElementById('mv-align');
+  const bar=document.getElementById('bar-obs');
+  const verd=document.getElementById('verdict');
+
+  if(align===null){
+    elA.textContent='—';elA.className='mv';
+    bar.style.width='0%';
+    verd.textContent='—';verd.className='';
+    return;
+  }
+  elA.textContent=align.toFixed(1)+'°';
+  bar.style.width=Math.min(100,(align/BASELINE_DEG)*100)+'%';
+
+  if(align<GEO_THRESHOLD){
+    verd.textContent='◉ strong geodesic bias detected';verd.className='geo';
+    elA.className='mv hi';
+  }else if(align<BASELINE_DEG*0.75){
+    verd.textContent='◎ moderate geodesic bias';verd.className='geo';
+    elA.className='mv hi';
+  }else{
+    verd.textContent='· diffuse / isotropic propagation';verd.className='';
+    elA.className='mv';
+  }
+}
+
+function drawChart(){
+  const cw=chartCan.width,ch=chartCan.height;
+  chartCtx.fillStyle='#060c18';
+  chartCtx.fillRect(0,0,cw,ch);
+  const n=hAlign.length;
+  if(n<2)return;
+
+  // Baseline
+  const maxDeg=30;
+  const baseY=ch*(1-BASELINE_DEG/maxDeg);
+  chartCtx.setLineDash([3,3]);
+  chartCtx.strokeStyle='#1a3050';chartCtx.lineWidth=0.8;
+  chartCtx.beginPath();chartCtx.moveTo(0,baseY);chartCtx.lineTo(cw,baseY);chartCtx.stroke();
+  chartCtx.setLineDash([]);
+
+  // Threshold line
+  const threshY=ch*(1-GEO_THRESHOLD/maxDeg);
+  chartCtx.setLineDash([1,4]);
+  chartCtx.strokeStyle='#1a4030';chartCtx.lineWidth=0.7;
+  chartCtx.beginPath();chartCtx.moveTo(0,threshY);chartCtx.lineTo(cw,threshY);chartCtx.stroke();
+  chartCtx.setLineDash([]);
+
+  // Alignment series
+  chartCtx.strokeStyle='#30c080';chartCtx.lineWidth=1.3;
+  chartCtx.beginPath();
+  let first=true;
+  for(let i=0;i<n;i++){
+    const a=hAlign[i];if(a===null)continue;
+    const x=(i/(HIST-1))*cw;
+    const y=ch*(1-Math.min(a,maxDeg)/maxDeg);
+    first?(chartCtx.moveTo(x,y),first=false):chartCtx.lineTo(x,y);
+  }
+  chartCtx.stroke();
+
+  // Labels
+  chartCtx.fillStyle='#152535';chartCtx.font='8px Courier New';
+  chartCtx.fillText('12.9° baseline',2,baseY-3);
+  chartCtx.fillStyle='#1a3020';
+  chartCtx.fillText('7.1° threshold',2,threshY-3);
+}
+
+// ── Render ──────────────────────────────────────────────────────
+function draw(){
+  ctx.fillStyle='#050510';ctx.fillRect(0,0,W,H);
+  for(let r=DR+8;r>=DR-2;r-=2){
+    ctx.beginPath();ctx.arc(CX,CY,r,0,TAU);
+    ctx.strokeStyle=`rgba(20,50,80,${0.03*(DR-r+10)/10})`;
+    ctx.lineWidth=2;ctx.stroke();
+  }
+  ctx.beginPath();ctx.arc(CX,CY,DR,0,TAU);
+  ctx.strokeStyle='#1a3050';ctx.lineWidth=1;ctx.stroke();
+
+  for(const id of ro){
+    const c=cells[id];if(c.state)continue;
+    const v=verts[id];
+    ctx.beginPath();ctx.moveTo(v[0],v[1]);
+    for(let j=1;j<P;j++)ctx.lineTo(v[j*2],v[j*2+1]);
+    ctx.closePath();
+    const alpha=Math.max(0.02,0.12-c.depth*0.018);
+    ctx.fillStyle=`rgba(10,15,40,${alpha})`;ctx.fill();
+    ctx.strokeStyle='#0c0c1e';ctx.lineWidth=0.4;ctx.stroke();
+  }
+  for(const id of ro){
+    const c=cells[id];if(!c.state)continue;
+    const v=verts[id];
+    ctx.beginPath();ctx.moveTo(v[0],v[1]);
+    for(let j=1;j<P;j++)ctx.lineTo(v[j*2],v[j*2+1]);
+    ctx.closePath();
+    ctx.fillStyle=cellClr(c);ctx.fill();
+    ctx.strokeStyle='#08082a';ctx.lineWidth=0.5;ctx.stroke();
+  }
+  ctx.beginPath();ctx.arc(CX,CY,1.5,0,TAU);
+  ctx.fillStyle='#1a3050';ctx.fill();
+
+  document.getElementById('info').textContent=
+    `${N} cells | gen ${gen} | alive ${countAlive()}`;
+
+  updateMetrics();
+  drawChart();
+}
+
+// ── Survey ──────────────────────────────────────────────────────
+const ruleList=[
+  {key:'3_34',label:'B3/S34'},
+  {key:'2_34',label:'B2/S34'},
+  {key:'23_34',label:'B23/S34'},
+  {key:'3_23',label:'B3/S23'},
+  {key:'2_23',label:'B2/S23'},
+  {key:'34_234',label:'B34/S234'},
+  {key:'2_345',label:'B2/S345'},
+  {key:'1_12',label:'B1/S12'},
+];
+
+let surveyData=[];
+
+function seedDefault(){
+  gen=0;cells.forEach(c=>{c.state=0;c.age=0;});
+  [0,1,2,8].forEach(i=>{if(cells[i])cells[i].state=1;});
+}
+
+function classifyBehavior(finalAlive,series,avgAlign){
+  if(finalAlive<2)return{text:'→ extinction',geo:false};
+  if(avgAlign!==null&&avgAlign<GEO_THRESHOLD&&finalAlive>=3)
+    return{text:'→ geodesic chains ◉',geo:true};
+  const last10=series.slice(50);
+  const variance=last10.length>1?
+    last10.reduce((s,v)=>s+Math.pow(v-last10[0],2),0)/last10.length:0;
+  if(variance<4&&finalAlive>2)return{text:'→ stable structures',geo:false};
+  if(series[59]>series[30]*2.5&&series[59]>40)return{text:'→ rapid expansion',geo:false};
+  return{text:'→ diffuse propagation',geo:false};
+}
+
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function runSurvey(){
+  const btn=document.getElementById('bSurvey');
+  const status=document.getElementById('status');
+  btn.disabled=true;
+  if(playing)togglePlay(false);
+
+  inSurvey=true;
+  surveyData=[];
+  document.getElementById('survey-body').innerHTML='';
+  document.getElementById('survey-section').classList.add('show');
+
+  const savedRule=document.getElementById('ruleEl').value;
+
+  for(let ri=0;ri<ruleList.length;ri++){
+    const rule=ruleList[ri];
+    status.textContent=`surveying ${rule.label}  (${ri+1}/${ruleList.length})`;
+
+    document.getElementById('ruleEl').value=rule.key;
+    parseRule(rule.key);
+    seedDefault();
+
+    const alignSeries=[],aliveSeries=[];
+
+    for(let g=0;g<60;g++){
+      stepCA();
+      alignSeries.push(computeAlign());
+      aliveSeries.push(countAlive());
+      if(g%12===11){draw();await delay(0);}
+    }
+    draw();
+
+    const finalAlive=aliveSeries[59];
+    const validA=alignSeries.filter(a=>a!==null);
+    const lateA=validA.slice(Math.max(0,validA.length-35));
+    const avgAlign=lateA.length?lateA.reduce((a,b)=>a+b)/lateA.length:null;
+    const minAlign=validA.length?Math.min(...validA):null;
+    const behavior=classifyBehavior(finalAlive,aliveSeries,avgAlign);
+
+    const result={
+      rule:rule.label,finalAlive,
+      avgAlign:avgAlign!==null?avgAlign:null,
+      minAlign:minAlign!==null?minAlign:null,
+      behavior,
+      avgAlignNum:avgAlign,
+    };
+    surveyData.push(result);
+    addSurveyRow(result);
+    await delay(350);
+  }
+
+  inSurvey=false;
+  document.getElementById('ruleEl').value=savedRule;
+  parseRule(savedRule);
+  seedDefault();
+  hAlign.length=0;hAlive.length=0;
+  draw();
+
+  const geoCount=surveyData.filter(r=>r.behavior.geo).length;
+  status.textContent=`survey complete · ${geoCount}/${ruleList.length} rules show geodesic bias`;
+  btn.disabled=false;
+}
+
+function addSurveyRow(r){
+  const tbody=document.getElementById('survey-body');
+  const tr=document.createElement('tr');
+  if(r.behavior.geo)tr.className='geo';
+
+  let biasStr='—';
+  if(r.avgAlignNum!==null){
+    const pct=Math.round((1-r.avgAlignNum/BASELINE_DEG)*100);
+    biasStr=(pct>0?'+':'')+pct+'%';
+  }
+
+  tr.innerHTML=`
+    <td>${r.rule}</td>
+    <td class="num">${r.finalAlive}</td>
+    <td class="num">${r.avgAlign!==null?r.avgAlign.toFixed(1)+'°':'—'}</td>
+    <td class="num">${r.minAlign!==null?r.minAlign.toFixed(1)+'°':'—'}</td>
+    <td class="num" style="font-size:9px;color:#1a3555">${biasStr}</td>
+    <td class="beh">${r.behavior.text}</td>`;
+  tbody.appendChild(tr);
+}
+
+// ── Export ──────────────────────────────────────────────────────
+function exportCSV(){
+  if(!surveyData.length)return;
+  const h='Rule,Alive_at_60,Avg_Align_deg,Min_Align_deg,Bias_vs_Baseline,Behavior\n';
+  const rows=surveyData.map(r=>{
+    const pct=r.avgAlignNum!==null?Math.round((1-r.avgAlignNum/BASELINE_DEG)*100)+'%':'—';
+    return`${r.rule},${r.finalAlive},`+
+      `${r.avgAlign!==null?r.avgAlign.toFixed(2):''},`+
+      `${r.minAlign!==null?r.minAlign.toFixed(2):''},`+
+      `${pct},"${r.behavior.text}"`;
+  }).join('\n');
+  dl('poincare_ca_survey.csv',h+rows);
+}
+
+function exportJSON(){
+  if(!surveyData.length)return;
+  const out={
+    experiment:'Geodesic Alignment Survey — {7,3} Heptagrid',
+    tiling:'{7,3}',neighbors:7,
+    seed:'cells [0,1,2,8]',generations:60,
+    baseline_deg:+BASELINE_DEG.toFixed(4),
+    geodesic_threshold_deg:+GEO_THRESHOLD.toFixed(4),
+    total_cells:N,
+    results:surveyData.map(r=>({
+      rule:r.rule,alive_at_60:r.finalAlive,
+      avg_align_deg:r.avgAlign!==null?+r.avgAlign.toFixed(3):null,
+      min_align_deg:r.minAlign!==null?+r.minAlign.toFixed(3):null,
+      geodesic_bias:r.behavior.geo,
+      behavior:r.behavior.text,
+    }))
+  };
+  dl('poincare_ca_survey.json',JSON.stringify(out,null,2));
+}
+
+function dl(name,text){
+  const a=document.createElement('a');
+  a.href='data:text/plain;charset=utf-8,'+encodeURIComponent(text);
+  a.download=name;a.click();
+}
+
+// ── Playback ────────────────────────────────────────────────────
+let playing=false,tmr=null,spd=5;
+
+function togglePlay(on){
+  playing=on!==undefined?on:!playing;
+  const btn=document.getElementById('bPlay');
+  btn.textContent=playing?'⏸ pause':'▶ play';
+  btn.classList.toggle('on',playing);
+  if(playing)loop();else clearTimeout(tmr);
+}
+
+function loop(){stepCA();draw();tmr=setTimeout(()=>requestAnimationFrame(loop),1000/spd);}
+
+document.getElementById('bPlay').addEventListener('click',()=>togglePlay());
+document.getElementById('bStep').addEventListener('click',()=>{if(!playing){stepCA();draw();}});
+document.getElementById('bClr').addEventListener('click',()=>{
+  gen=0;cells.forEach(c=>{c.state=0;c.age=0;});
+  hAlign.length=0;hAlive.length=0;draw();
+});
+document.getElementById('bRand').addEventListener('click',()=>{
+  gen=0;cells.forEach(c=>{c.state=Math.random()<0.28?1:0;c.age=0;});
+  hAlign.length=0;hAlive.length=0;draw();
+});
+document.getElementById('bSeed').addEventListener('click',()=>{seedDefault();hAlign.length=0;hAlive.length=0;draw();});
+document.getElementById('ruleEl').addEventListener('change',e=>parseRule(e.target.value));
+document.getElementById('spd').addEventListener('input',e=>spd=+e.target.value);
+document.getElementById('bSurvey').addEventListener('click',runSurvey);
+document.getElementById('bExportCSV').addEventListener('click',exportCSV);
+document.getElementById('bExportJSON').addEventListener('click',exportJSON);
+
+can.addEventListener('click',e=>{
+  const rect=can.getBoundingClientRect();
+  const sx=(e.clientX-rect.left)*W/rect.width;
+  const sy=(e.clientY-rect.top)*H/rect.height;
+  const pr=(sx-CX)/DR,pi_=-(sy-CY)/DR;
+  let best=-1,bd=1;
+  for(let id=0;id<N;id++){
+    const c=cells[id];
+    const d=(pr-c.cr)**2+(pi_-c.ci)**2;
+    if(d<bd){bd=d;best=id;}
+  }
+  if(best>=0&&bd<0.08){
+    cells[best].state^=1;
+    if(!cells[best].state)cells[best].age=0;
+    draw();
+  }
+});
+
+draw();
+</script>

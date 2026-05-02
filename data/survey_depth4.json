@@ -1,0 +1,76 @@
+{
+  "experiment": "Geodesic Alignment Survey \u2014 {7,3} Heptagrid",
+  "tiling": "{7,3}",
+  "neighbors": 7,
+  "seed": "cells [0,1,2,8]",
+  "generations": 60,
+  "total_cells": 190,
+  "baseline_deg": 12.8571,
+  "geodesic_threshold_deg": 7.0714,
+  "results": [
+    {
+      "rule": "B3/S34",
+      "alive_at_60": 0,
+      "avg_align_deg": 0.0,
+      "min_align_deg": 0.0,
+      "geodesic_bias": false,
+      "behavior": "extinction"
+    },
+    {
+      "rule": "B2/S34",
+      "alive_at_60": 2,
+      "avg_align_deg": 13.224,
+      "min_align_deg": 0.0,
+      "geodesic_bias": false,
+      "behavior": "diffuse propagation"
+    },
+    {
+      "rule": "B23/S34",
+      "alive_at_60": 5,
+      "avg_align_deg": 7.575,
+      "min_align_deg": 6.712,
+      "geodesic_bias": false,
+      "behavior": "stable structures"
+    },
+    {
+      "rule": "B3/S23",
+      "alive_at_60": 4,
+      "avg_align_deg": 0.0,
+      "min_align_deg": 0.0,
+      "geodesic_bias": true,
+      "behavior": "geodesic chains"
+    },
+    {
+      "rule": "B2/S23",
+      "alive_at_60": 39,
+      "avg_align_deg": 12.23,
+      "min_align_deg": 6.712,
+      "geodesic_bias": false,
+      "behavior": "diffuse propagation"
+    },
+    {
+      "rule": "B34/S234",
+      "alive_at_60": 4,
+      "avg_align_deg": 0.0,
+      "min_align_deg": 0.0,
+      "geodesic_bias": true,
+      "behavior": "geodesic chains"
+    },
+    {
+      "rule": "B2/S345",
+      "alive_at_60": 2,
+      "avg_align_deg": 13.224,
+      "min_align_deg": 0.0,
+      "geodesic_bias": false,
+      "behavior": "diffuse propagation"
+    },
+    {
+      "rule": "B1/S12",
+      "alive_at_60": 60,
+      "avg_align_deg": 10.726,
+      "min_align_deg": 8.022,
+      "geodesic_bias": false,
+      "behavior": "diffuse propagation"
+    }
+  ]
+}
